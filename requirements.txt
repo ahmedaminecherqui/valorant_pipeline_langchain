@@ -1,0 +1,6 @@
+langchain
+langchain-google-genai
+pandas
+requests
+python-dotenv
+sqlite3
