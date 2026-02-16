@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated outputs
+AAA_REPORT_FOR_USER.md
+*_clean.csv
+valorant.db
+
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
