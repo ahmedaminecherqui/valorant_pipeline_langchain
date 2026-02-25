@@ -138,7 +138,12 @@ This section contains 100% transparent logs of every agent's input and output.
 
             # STEP 1: CLEANING
             if isinstance(raw_matches, list):
-                playable_matches = [m for m in raw_matches if m.get("is_available", True)]
+                # n8n unwrap logic: if items are wrapped in {"data": ...}, unwrap them
+                if len(raw_matches) > 0 and isinstance(raw_matches[0], dict) and "data" in raw_matches[0]:
+                    print(f"\n{BOLD}{CYAN}🔄 [INFO] Unwrapping n8n data structure...{RESET}")
+                    raw_matches = [m["data"] for m in raw_matches if isinstance(m, dict) and "data" in m]
+
+                playable_matches = [m for m in raw_matches if isinstance(m, dict) and m.get("is_available", True)]
                 if not playable_matches:
                     print(f"\n{YELLOW}⚠️ [INFO] No playable matches found (all stubs). Pipeline stopped.{RESET}")
                     return {"status": "SKIPPED", "report": "No playable matches found after filtering stubs."}

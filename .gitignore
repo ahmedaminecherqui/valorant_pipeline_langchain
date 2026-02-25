@@ -3,11 +3,21 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables (SENSITIVE)
+.env
+.env.*
+!.env.example
+
 # Generated outputs
 AAA_REPORT_FOR_USER.md
 *_clean.csv
 valorant.db
-
+reports/
 
 # IDE
 .vscode/

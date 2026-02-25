@@ -16,6 +16,10 @@ def match_data_cleaner(raw_matches_json: str) -> str:
         if not isinstance(raw_matches, list):
             return json.dumps([{"error": "Input must be a list of matches", "raw": str(raw_matches)[:100]}])
             
+        # Defensive unwrap for n8n/proxy wrapping
+        if len(raw_matches) > 0 and isinstance(raw_matches[0], dict) and "data" in raw_matches[0]:
+            raw_matches = [m["data"] for m in raw_matches if isinstance(m, dict) and "data" in m]
+
         clean_matches = []
         for m in raw_matches:
             if not m or not isinstance(m, dict): continue
@@ -54,6 +58,10 @@ def player_stats_cleaner(raw_matches_json: str) -> str:
         if not isinstance(raw_matches, list):
             return json.dumps([{"error": "Input must be a list of matches"}])
             
+        # Defensive unwrap for n8n/proxy wrapping
+        if len(raw_matches) > 0 and isinstance(raw_matches[0], dict) and "data" in raw_matches[0]:
+            raw_matches = [m["data"] for m in raw_matches if isinstance(m, dict) and "data" in m]
+
         all_players = []
         for match in raw_matches:
             if not match or not isinstance(match, dict): continue
