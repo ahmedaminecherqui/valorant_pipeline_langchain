@@ -1,0 +1,247 @@
+\documentclass[11pt,a4paper]{article}
+
+% ========== PACKAGES ==========
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french,english]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,shadows,calc}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage[most]{tcolorbox}
+\usepackage{titlesec}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+\usepackage{lmodern}
+
+% ========== COLORS ==========
+\definecolor{valorantRed}{HTML}{FF4655}
+\definecolor{darkNavy}{HTML}{0F1923}
+\definecolor{offWhite}{HTML}{ECE8E1}
+\definecolor{primaryBlue}{RGB}{41,128,185}
+\definecolor{secondaryBlue}{RGB}{52,152,219}
+\definecolor{darkGray}{RGB}{52,73,94}
+
+% ========== HYPERREF SETUP ==========
+\hypersetup{
+    colorlinks=true,
+    linkcolor=valorantRed,
+    urlcolor=secondaryBlue,
+    citecolor=primaryBlue,
+    pdfborder={0 0 0}
+}
+
+% ========== SECTION FORMATTING ==========
+\titleformat{\section}
+  {\normalfont\LARGE\bfseries\color{darkNavy}}
+  {\thesection}{1em}{}
+  [\vspace{-0.3em}{\color{valorantRed}\titlerule[2pt]}]
+\titlespacing*{\section}{0pt}{1.5em}{0.8em}
+
+\titleformat{\subsection}
+  {\normalfont\Large\bfseries\color{valorantRed}}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{1.2em}{0.5em}
+
+% ========== CUSTOM BOXES ==========
+\newtcolorbox{AgentBox}[2][]{
+    enhanced,
+    colback=white,
+    colframe=darkNavy,
+    boxrule=0.8pt,
+    leftrule=4pt,
+    arc=2pt,
+    fonttitle=\bfseries\large\color{white},
+    coltitle=white,
+    colbacktitle=darkNavy,
+    attach boxed title to top left={yshift=-2mm, xshift=5mm},
+    boxed title style={arc=2pt},
+    title=#2,
+    left=12pt,
+    right=12pt,
+    top=10pt,
+    bottom=10pt,
+    drop shadow={opacity=0.1},
+    before skip=15pt,
+    after skip=15pt,
+    #1
+}
+
+\newtcolorbox{WorkflowStep}[1]{
+    enhanced,
+    colback=offWhite!30,
+    colframe=valorantRed!50,
+    boxrule=0.5pt,
+    leftrule=3pt,
+    arc=1pt,
+    fonttitle=\bfseries\small\color{valorantRed},
+    title=#1,
+    coltitle=valorantRed,
+    colbacktitle=offWhite!30,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={boxrule=0pt, outer arc=0pt, arc=0pt},
+    left=8pt,
+    right=8pt,
+    top=8pt,
+    bottom=6pt,
+    before skip=8pt,
+    after skip=8pt
+}
+
+% ========== DOCUMENT ==========
+\begin{document}
+
+% --- TITLE PAGE ---
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+    \begin{tcolorbox}[
+        enhanced,
+        colback=darkNavy,
+        colframe=valorantRed,
+        boxrule=3pt,
+        arc=10pt,
+        width=0.9\textwidth,
+        drop shadow={opacity=0.3}
+    ]
+        \centering
+        \vspace{0.5cm}
+        {\Huge\bfseries\color{white} AURORA}\\[0.4cm]
+        {\LARGE\color{offWhite} Workflows et Architecture Multi-Agents}\\[0.3cm]
+        {\large\itshape\color{valorantRed} Documentation Technique de Référence}
+        \vspace{0.5cm}
+    \end{tcolorbox}
+    \vspace{2cm}
+    {\large \faRobot \quad Logiciel d'Intelligence Tactique} \\
+    \vspace{1cm}
+    \vfill
+    {\large \today}
+\end{titlepage}
+
+\newpage
+
+% --- GLOBAL ARCHITECTURE & AGENTS ---
+\section{Architecture et Workflows des Agents Aurora}
+
+\subsection{1. Vue d'ensemble du processus}
+
+Le workflow d'ingestion et de nettoyage automatise le passage des données brutes vers une intelligence exploitable via l'écosystème \textbf{Aurora} :
+
+\begin{itemize}[label=\color{valorantRed}\faCogs, leftmargin=1cm]
+    \item \textbf{Extraction} : Récupération de la télémétrie via l'API Riot Games.
+    \item \textbf{Transformation} : Nettoyage et normalisation des structures JSON.
+    \item \textbf{Validation} : Audit par LLM pour garantir l'intégrité des données.
+    \item \textbf{Persistence} : Stockage unifié en SQLite et CSV.
+\end{itemize}
+
+\subsection{2. Rôle du CleanerBot}
+
+\begin{AgentBox}{Agent : CleanerBot}
+Le \textbf{CleanerBot} agit comme l'agent d'ingénierie des données. Ses responsabilités principales incluent :\\
+\begin{itemize}[label=\color{valorantRed}\faCheckCircle, leftmargin=1cm, itemsep=6pt]
+    \item \textbf{Ingestion} : Récupération des données télémétriques brutes via l'API Riot.
+    \item \textbf{Validation} : Vérification de l'intégrité et de la conformité des schémas.
+    \item \textbf{Normalisation} : Mapping unifié pour une analyse cohérente entre agents.
+    \item \textbf{Préparation} : Agrégation des métriques pour les diagnostics tactiques.
+    \item \textbf{Stockage} : Persistence sécurisée dans l'entrepôt de données Aurora.
+\end{itemize}
+\end{AgentBox}
+
+\subsection{3. Flux de travail détaillé (Ingestion)}
+
+Le diagramme de séquence pour l'analyse des performances des joueurs [3] illustre clairement le rôle du CleanerBot :
+
+\begin{enumerate}[label=\protect\tcbox[on line, boxsep=0pt, left=3pt, right=3pt, top=2pt, bottom=2pt, colback=darkNavy, colframe=darkNavy, fontupper=\bfseries\color{white}]{step \arabic*}, leftmargin=2cm]
+    \item \textbf{Requête d'analyse} : Un utilisateur (Joueur/Analyste) envoie une requête d'analyse de performance au Système API.
+    \item \textbf{Récupération et nettoyage} : Le Système API demande au CleanerBot de récupérer et nettoyer les données de match.
+    \item \textbf{Accès à l'API Riot Games} : Le CleanerBot récupère les données de match brutes auprès de l'API de Riot Games.
+    \item \textbf{Stockage des données nettoyées} : Le CleanerBot stocke les données nettoyées dans l'entrepôt de données (Data Warehouse).
+    \item \textbf{Fourniture du jeu de données} : Le CleanerBot fournit le jeu de données nettoyé à l'AnalystBot pour traitement ultérieur.
+\end{enumerate}
+
+\subsection{4. AnalystBot (Analyse Tactique)}
+
+L'\textbf{AnalystBot} est l'agent analyste tactique, intervenant après le \textbf{CleanerBot} pour transformer les données nettoyées en informations exploitables. Ses responsabilités principales sont les suivantes [1] [2] :
+
+\begin{WorkflowStep}{Responsabilités de l'AnalystBot}
+\begin{itemize}[label=\color{valorantRed}\faCogs, itemsep=6pt]
+    \item \textbf{Métrique KPI} : Calcul du KDA, de l'Aim et du score propriétaire \textbf{OVR}.
+    \item \textbf{Audit Tactique} : Identification des failles de timing et de placement.
+    \item \textbf{Analyse SQL} : Extraction de caractéristiques de performance ciblées.
+\end{itemize}
+\end{WorkflowStep}
+
+\subsubsection*{Flux de travail de l'AnalystBot (Exemple : Analyse de Performance Joueur) [3]}
+\begin{enumerate}
+    \item Le \textbf{CleanerBot} fournit un jeu de données nettoyé à l'AnalystBot.
+    \item L'AnalystBot interroge l'entrepôt de données (Data Warehouse) pour obtenir les métriques de performance.
+    \item Il calcule les KPI et les insights.
+    \item Ces informations sont ensuite transmises à l'API du système pour être affichées à l'utilisateur.
+\end{enumerate}
+
+\subsection{5. CoachBot (IA Stratégique et RAG)}
+
+Le \textbf{CoachBot} est l'agent d'IA stratégique, spécialisé dans la recommandation de tactiques et la synthèse d'analyses. Son rôle est crucial pour fournir des conseils exploitables [1] [2] :
+
+\begin{WorkflowStep}{Actions du CoachBot}
+\begin{itemize}[label=\color{valorantRed}\faLightbulb, itemsep=6pt]
+    \item \textbf{Synthèse} : Génération de rapports naturels et méta-contextuels.
+    \item \textbf{Stratégie} : Recommandations tactiques basées sur la méta actuelle.
+    \item \textbf{Mémoire RAG} : Utilisation de FAISS pour intégrer le jeu professionnel.
+\end{itemize}
+\end{WorkflowStep}
+
+\subsubsection*{Flux de travail du CoachBot (Exemple : Recommandation de Stratégie) [3]}
+\begin{enumerate}
+    \item L'AnalystBot fournit les faiblesses et le contexte au CoachBot.
+    \item Le CoachBot interroge la mémoire RAG (FAISS) pour récupérer les stratégies pertinentes.
+    \item Il collabore avec l'OracleBot pour évaluer la probabilité de succès de la stratégie.
+    \item Enfin, il envoie les recommandations stratégiques à l'API du système.
+\end{enumerate}
+
+\subsection{6. OracleBot (Agent de Prédiction)}
+
+L'\textbf{OracleBot} est l'agent de prédiction, dont la fonction principale est de prévoir les résultats et d'évaluer les probabilités de succès des stratégies [1] [2] :
+
+\begin{itemize}[label=\color{valorantRed}\faChartLine, itemsep=6pt]
+    \item \textbf{Prédiction} : Prévision des probabilités de victoire via modèles ML.
+    \item \textbf{Évaluation} : Simulation du taux de succès des stratégies proposées.
+\end{itemize}
+
+\subsubsection*{Flux de travail de l'OracleBot (Exemple : Prédiction du Résultat de Match) [3]}
+\begin{enumerate}
+    \item L'AnalystBot extrait les caractéristiques prédictives et les envoie à l'OracleBot.
+    \item L'OracleBot exécute son modèle de prédiction.
+    \item Il renvoie le result prédit et la probabilité à l'API du système.
+\end{enumerate}
+
+\subsection{7. QueryTunerBot (Agent d'Optimisation SQL)}
+
+Le \textbf{QueryTunerBot} est un agent d'optimisation autonome, conçu pour améliorer les performances des requêtes SQL analytiques [1] [2] :
+
+\begin{itemize}[label=\color{valorantRed}\faDatabase, itemsep=6pt]
+    \item \textbf{Optimisation} : Restructuration autonome des requêtes DuckDB.
+    \item \textbf{Performance} : Simplification active des jointures et filtres.
+\end{itemize}
+
+\subsubsection*{Flux de travail du QueryTunerBot [2]}
+\begin{enumerate}
+    \item Une requête SQL est envoyée au QueryTunerBot.
+    \item Le QueryTunerBot analyse la requête, détecte les goulots d'étranglement (en utilisant \texttt{EXPLAIN ANALYZE} de DuckDB).
+    \item Il réécrit la requête et recommande des index ou des vues matérialisées.
+    \item La requête SQL optimisée est ensuite exécutée sur DuckDB.
+\end{enumerate}
+
+\subsection{8. Orchestration Globale (LangChain)}
+
+L'ensemble de ces agents est orchestré par \textbf{LangChain}, qui définit les workflows précis et les dépendances entre eux. Cette approche garantit une collaboration structurée et une séparation claire des préoccupations, où chaque agent apporte son expertise spécifique pour atteindre l'objectif global de la plateforme [1] [2].
+
+\end{document}

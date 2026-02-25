@@ -1,0 +1,211 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "e6f4a8b1-1234-4567-890a-bcdef0123456",
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                160,
+                380
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "update-tunnel-url",
+                "options": {}
+            },
+            "id": "webhook-tunnel-sync",
+            "name": "Webhook: Tunnel Sync",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                160,
+                180
+            ],
+            "webhookId": "update-tunnel-url"
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "puuid",
+                            "value": "5256a0cd-97e4-5ee7-8bac-6ce03d73ba87"
+                        },
+                        {
+                            "name": "region",
+                            "value": "eu"
+                        },
+                        {
+                            "name": "tunnel_url",
+                            "value": "={{ $node[\"Webhook: Tunnel Sync\"].json[\"body\"][\"tunnel_url\"] || \"https://aurora-v4-99-cherq.loca.lt\" }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "7a8b9c0d-1e2f-3a4b-5c6d-7e8f9a0b1c2d",
+            "name": "Set Player Identity",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 2,
+            "position": [
+                420,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "url": "={{$json.tunnel_url}}/fetch-matches?region={{$json.region}}&puuid={{$json.puuid}}",
+                "options": {
+                    "headers": [
+                        {
+                            "name": "bypass-tunnel-reminder",
+                            "value": "true"
+                        },
+                        {
+                            "name": "User-Agent",
+                            "value": "Aurora-Bypass-Agent"
+                        }
+                    ]
+                }
+            },
+            "id": "f5e3d2c1-2345-6789-0abc-def012345678",
+            "name": "Get Recent Matches (Via Aurora Proxy)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                640,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{$item(0).$node[\"Set Player Identity\"].json[\"tunnel_url\"]}}/run-pipeline",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "data",
+                            "value": "={{$json}}"
+                        }
+                    ]
+                },
+                "options": {
+                    "headers": [
+                        {
+                            "name": "bypass-tunnel-reminder",
+                            "value": "true"
+                        },
+                        {
+                            "name": "User-Agent",
+                            "value": "Aurora-Bypass-Agent"
+                        }
+                    ]
+                }
+            },
+            "id": "a1b2c3d4-3456-7890-abcd-ef0123456789",
+            "name": "Aurora: Agent API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                860,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "Status",
+                            "value": "={{$json.status}}"
+                        },
+                        {
+                            "name": "Log",
+                            "value": "={{$json.message}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "d4c3b2a1-4567-890a-bcde-f0123456789a",
+            "name": "Final Status",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 2,
+            "position": [
+                1080,
+                240
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Set Player Identity",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook: Tunnel Sync": {
+            "main": [
+                [
+                    {
+                        "node": "Set Player Identity",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Set Player Identity": {
+            "main": [
+                [
+                    {
+                        "node": "Get Recent Matches (Via Aurora Proxy)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Recent Matches (Via Aurora Proxy)": {
+            "main": [
+                [
+                    {
+                        "node": "Aurora: Agent API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Aurora: Agent API": {
+            "main": [
+                [
+                    {
+                        "node": "Final Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

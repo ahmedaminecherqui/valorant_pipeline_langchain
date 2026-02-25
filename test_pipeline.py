@@ -26,7 +26,9 @@ def test_on_raw_data():
 
     # 2. Run Workflow
     print("\n[2/3] Sending to LangChain Workflow...")
-    result_status = workflow.run(raw_data)
+    # The workflow now returns {"status": ..., "report": ...}
+    workflow_result = workflow.run(raw_data)
+    result_status = workflow_result.get("status", "UNKNOWN")
     
     # 3. Retrieve and Show Cleaned Data
     print("\n[3/3] Retrieving Cleaned Result...")
@@ -41,6 +43,7 @@ def test_on_raw_data():
                 print(f.read()[:500])
                 
             print("\n✅ VERIFICATION COMPLETE: The dataset was cleaned and persisted.")
+            print(f"📄 Full report saved as AAA_REPORT_FOR_USER.md")
         except Exception as e:
             print(f"❌ Error reading output: {e}")
     else:

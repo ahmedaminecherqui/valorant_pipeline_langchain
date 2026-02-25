@@ -23,9 +23,15 @@ def get_matches_by_player(region: str, puuid: str):
             
             if response.status_code == 200:
                 data = response.json().get('data', [])
-                if data:
-                    print(f"✅ [API] Success! Fetched {len(data)} matches.")
-                    return data
+                if data and isinstance(data, list):
+                    # Filter out matches where 'is_available' is explicitly False
+                    # These are stubs that often lack player/round detail
+                    valid_data = [m for m in data if m.get("is_available", True)]
+                    if valid_data:
+                        print(f"✅ [API] Success! Fetched {len(valid_data)} playable matches (Filtered {len(data) - len(valid_data)} stubs).")
+                        return valid_data
+                    else:
+                        print("⚠️ [API] All fetched matches were unavailable stubs.")
             
             print(f"⚠️ [API] Failed! HTTP {response.status_code}: {response.text[:100]}")
         except Exception as e:

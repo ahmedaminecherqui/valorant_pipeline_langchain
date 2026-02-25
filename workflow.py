@@ -2,7 +2,8 @@ import json
 import os
 from datetime import datetime
 import traceback
-from agents import validator_prompt, llm
+from langchain_core.prompts import ChatPromptTemplate
+from agents import validator_prompt, reporter_prompt, llm
 from tools import match_data_cleaner, player_stats_cleaner, data_persistor
 
 # ANSI Colors for Terminal Beautification
@@ -23,152 +24,183 @@ class ValorantPipelineWorkflow:
     def _log_agent(self, step: str, name: str, input_data: str, output_data: str):
         """Helper to log steps in history and console with BEAUTIFUL truncation and JSON formatting."""
         
-        def console_beautify(data_str, limit=1000):
+        def beautify(data_str, limit=5000):
+            """Returns a pretty-printed, summarized version of the JSON for reports."""
             try:
-                # Attempt to parse as JSON for pretty printing
                 parsed = json.loads(data_str)
-                # If it's a huge list, just show the first item and the count
+                # If it's a huge list, show the first item and the count
                 if isinstance(parsed, list) and len(parsed) > 1:
-                    header = f"📋 [List of {len(parsed)} items]"
-                    pretty = json.dumps(parsed[0], indent=2)
-                    return f"{header}\n{pretty}\n... (+{len(parsed)-1} more records)"
-                return json.dumps(parsed, indent=2)
+                    count = len(parsed)
+                    preview = json.dumps(parsed[0], indent=2)
+                    return f"📋 [Showing 1 of {count} records]\n{preview}\n\n... (other records omitted for report clarity)"
+                # If it's a huge dict, show it but cap the length
+                pretty = json.dumps(parsed, indent=2)
+                if len(pretty) > limit:
+                    return pretty[:limit] + "\n\n... (truncated for report clarity)"
+                return pretty
             except:
-                # If not JSON, just return truncated string
                 s = str(data_str)
                 return s[:limit] + ("..." if len(s) > limit else "")
 
-        # Console Output
+        # Console Output (Uses more aggressive truncation for the screen)
         print(f"\n{BOLD}{MAGENTA}🤖 [STEP {step}] {name.upper()}{RESET}")
-        print(f"{CYAN}📥 INPUT RECEIVED:{RESET}\n{BOLD}{console_beautify(input_data, 300)}{RESET}")
-        print(f"{GREEN}📤 OUTPUT PRODUCED:{RESET}\n{BOLD}{console_beautify(output_data, 800)}{RESET}")
+        print(f"{CYAN}📥 INPUT RECEIVED:{RESET}\n{BOLD}{beautify(input_data, 1000)}{RESET}")
+        print(f"{GREEN}📤 OUTPUT PRODUCED:{RESET}\n{BOLD}{beautify(output_data, 1500)}{RESET}")
         print(f"{YELLOW}{'═'*60}{RESET}")
 
-        # Truncate for report history if too large (> 5000 chars)
-        # We keep the raw data in history for the report, but truncate only if insane
-        r_input = input_data if len(input_data) < 10000 else input_data[:10000] + "\n... [TRUNCATED] ..."
-        r_output = output_data if len(output_data) < 10000 else output_data[:10000] + "\n... [TRUNCATED] ..."
-
+        # Report History (Uses slightly more generous limits but still condensed)
         self.history.append({
             "step": step,
             "agent": name,
             "timestamp": datetime.now().strftime("%H:%M:%S"),
-            "input": r_input,
-            "output": r_output
+            "input": beautify(input_data, 3000),
+            "output": beautify(output_data, 3000)
         })
 
     def generate_report(self, final_status: str):
-        """Writes the execution history to a Markdown file in guaranteed locations."""
+        """Generates a premium, transparent Hybrid Report (Programmatic Logs + AI Audit)."""
         report_filename = "AAA_REPORT_FOR_USER.md"
         
-        # 1. Path relative to the script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        path_script = os.path.join(script_dir, report_filename)
-        
-        # 2. Path in the current working directory (where the user is)
-        path_cwd = os.path.join(os.getcwd(), report_filename)
-        
-        target_paths = list(set([path_script, path_cwd])) # Avoid duplicate writes if same
-        
-        for p in target_paths:
-            try:
-                with open(p, "w", encoding="utf-8") as f:
-                    f.write(f"# 📊 Valorant Pipeline Execution Report\n\n")
-                    f.write(f"- **Generated on:** `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n")
-                    f.write(f"- **Final Result:** **{final_status}**\n\n")
-                    f.write(f"## 🛠️ Step-by-Step Agent Audit\n\n")
-                    
-                    for entry in self.history:
-                        f.write(f"### 🤖 Step {entry['step']}: {entry['agent']}\n")
-                        f.write(f"- **Timestamp:** `{entry['timestamp']}`\n")
-                        
-                        try:
-                            pretty_in = json.dumps(json.loads(entry['input']), indent=2)
-                        except: pretty_in = entry['input']
-                        
-                        try:
-                            pretty_out = json.dumps(json.loads(entry['output']), indent=2)
-                        except: pretty_out = entry['output']
+        # 1. Programmatic Log Generation (Transparent & Reliable)
+        log_sections = []
+        for entry in self.history:
+            log_sections.append(
+                f"### 🤖 [Step {entry['step']}] {entry['agent']}\n"
+                f"- 🕒 **Time:** `{entry['timestamp']}`\n"
+                f"- 📥 **INPUT DATA:**\n"
+                f"```json\n{entry['input']}\n```\n"
+                f"- 📤 **OUTPUT PRODUCED:**\n"
+                f"```json\n{entry['output']}\n```\n"
+                "\n---\n"
+            )
+        detailed_logs = "\n\n".join(log_sections)
 
-                        f.write(f"#### 📥 Input Received\n```json\n{pretty_in}\n```\n")
-                        f.write(f"#### 📤 Output Produced\n```json\n{pretty_out}\n```\n")
-                        f.write("\n---\n")
-                    
-                    f.flush()
-                    os.fsync(f.fileno())
-            except Exception as e:
-                print(f"{RED}⚠️ Could not write to {p}: {e}{RESET}")
+        # 2. AI Audit Generation (High-Level Insight)
+        summary_prompt = ChatPromptTemplate.from_template(
+            "You are 'ReportSage', an Elite System Auditor.\n"
+            "Final Status: {final_status}\n"
+            "Key Metrics: {metrics}\n\n"
+            "Write a brief (2-3 paragraph) Executive Summary and a 'System Health Audit' list (using emojis).\n"
+            "Focus on high-level success or specific failure points.\n"
+            "Do NOT output the raw logs, only the professional analysis."
+        )
 
-        # Super clear output and debug check
-        print(f"\n{BOLD}{YELLOW}╔════════════════════════════════════════════════════════════════╗{RESET}")
-        print(f"{BOLD}{YELLOW}║ 📄 REPORT GENERATED: {report_filename.upper():<37} ║{RESET}")
-        print(f"{BOLD}{YELLOW}╚════════════════════════════════════════════════════════════════╝{RESET}")
-        
-        # Force open the file on Windows
         try:
-            os.startfile(path_script)
-            print(f"{GREEN}🚀 FORCING OPEN:{RESET} {path_script}")
-        except: pass
+            metrics_summary = f"Steps: {len(self.history)}, Final Status: {final_status}"
+            ai_response = (summary_prompt | self.llm).invoke({
+                "final_status": final_status,
+                "metrics": metrics_summary
+            })
+            ai_audit = ai_response.content
+        except Exception as e:
+            ai_audit = f"⚠️ AI Audit skipped: {str(e)}"
 
-        print(f"{BOLD}Location:{RESET} {path_script}")
-        print(f"{CYAN}Open Link:{RESET} file:///{path_script.replace(os.sep, '/')}\n")
+        # 3. Final Report Assembly (Premium Styling)
+        full_report = f"""# 🌌 Aurora Pipeline: Audit Report
+
+> [!IMPORTANT]
+> **Final Status:** {final_status} | **Execution Time:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+## 📊 Executive Summary
+{ai_audit}
+
+## ⚙️ Detailed Execution Log
+This section contains 100% transparent logs of every agent's input and output.
+
+{detailed_logs}
+
+---
+*Report generated by Aurora LangChain Engine v2.0*
+"""
+
+        # Save the report
+        try:
+            target_path = os.path.join(os.getcwd(), report_filename)
+            with open(target_path, "w", encoding="utf-8") as f:
+                f.write(full_report)
+            
+            # Show terminal info
+            print(f"{BOLD}{YELLOW}📄 HYBRID REPORT GENERATED: {target_path}{RESET}")
+            print(f"{CYAN}Open Link:{RESET} file:///{target_path.replace(os.sep, '/')}\n")
+            
+            return full_report
+        except Exception as e:
+            print(f"❌ Error saving report: {e}")
+            return full_report
 
     def run(self, raw_matches: list):
-        self.history = [] # Reset history
-        raw_matches_json = json.dumps(raw_matches)
-
-        print("\n" + "═"*60)
-        print(f"{BOLD}{YELLOW}🚀 STARTING ENHANCED MULTI-AGENT PIPELINE{RESET}")
-        print("═"*60)
-
-        # STEP 1: CLEANING
-        cleaned_matches_json = match_data_cleaner.invoke({"raw_matches_json": raw_matches_json})
-        print(f"🔍 [DEBUG] CleanerBot output (first 50 chars): {str(cleaned_matches_json)[:50]}")
-        self._log_agent("1", "CleanerBot", raw_matches_json, cleaned_matches_json)
-        
-        # STEP 2: ANALYST
-        cleaned_player_stats_json = player_stats_cleaner.invoke({"raw_matches_json": raw_matches_json})
-        self._log_agent("2", "AnalystBot", raw_matches_json, cleaned_player_stats_json)
-
-        # STEP 3: VALIDATOR
-        def safe_json_load(data_str, bot_name):
-            try:
-                # Basic check: if it doesn't start with { or [, it's likely an error string
-                cleaned_str = data_str.strip()
-                if not (cleaned_str.startswith("{") or cleaned_str.startswith("[")):
-                    return {"error": f"Bot {bot_name} did not return JSON.", "raw_output": data_str[:200]}
-                return json.loads(cleaned_str)
-            except Exception as e:
-                # Modified to include traceback for better debugging
-                return {"error": f"Failed to parse {bot_name} JSON: {str(e)}\nTraceback: {traceback.format_exc()}", "raw_output": data_str[:200]}
-
-        validation_input = json.dumps({
-            "match_data": safe_json_load(cleaned_matches_json, "CleanerBot"), 
-            "player_stats": safe_json_load(cleaned_player_stats_json, "AnalystBot")
-        }, indent=2)
-        
-        validation_response = (validator_prompt | self.llm).invoke({"cleaned_data": validation_input})
-        val_content = validation_response.content
-        self._log_agent("3", "ValidatorBot (Gemini)", validation_input, val_content)
-
-        if "data validated" in val_content.lower():
-            # STEP 4: PERSISTENCE
-            print(f"\n{BOLD}{CYAN}🤖 [STEP 4] Persistence Specialist...{RESET}")
-            res1 = data_persistor.invoke({"data_json": cleaned_matches_json, "table_name": "matches"})
-            res2 = data_persistor.invoke({"data_json": cleaned_player_stats_json, "table_name": "player_stats"})
+        try:
+            self.history = [] # Reset history
             
-            self._log_agent("4a", "Saving Matches", cleaned_matches_json, res1)
-            self._log_agent("4b", "Saving Player Stats", cleaned_player_stats_json, res2)
+            print("\n" + "═"*60)
+            print(f"{BOLD}{YELLOW}🚀 STARTING ENHANCED MULTI-AGENT PIPELINE{RESET}")
+            print("═"*60)
 
-            if "Error" in res1 or "Error" in res2:
-                final_status = "⚠️ COMPLETED WITH ERRORS"
+            # STEP 1: CLEANING
+            if isinstance(raw_matches, list):
+                playable_matches = [m for m in raw_matches if m.get("is_available", True)]
+                if not playable_matches:
+                    print(f"\n{YELLOW}⚠️ [INFO] No playable matches found (all stubs). Pipeline stopped.{RESET}")
+                    return {"status": "SKIPPED", "report": "No playable matches found after filtering stubs."}
+                raw_matches = playable_matches
+
+            raw_matches_json = json.dumps(raw_matches)
+            cleaned_matches_json = match_data_cleaner.invoke({"raw_matches_json": raw_matches_json})
+            self._log_agent("1", "CleanerBot", raw_matches_json, cleaned_matches_json)
+            
+            # STEP 2: ANALYST
+            cleaned_player_stats_json = player_stats_cleaner.invoke({"raw_matches_json": raw_matches_json})
+            self._log_agent("2", "AnalystBot", raw_matches_json, cleaned_player_stats_json)
+
+            # STEP 3: VALIDATOR
+            def safe_json_load(data_str, bot_name):
+                try:
+                    cleaned_str = data_str.strip()
+                    if not (cleaned_str.startswith("{") or cleaned_str.startswith("[")):
+                        return {"error": f"Bot {bot_name} did not return JSON.", "raw_output": data_str[:200]}
+                    return json.loads(cleaned_str)
+                except Exception as e:
+                    return {"error": f"Failed to parse {bot_name} JSON: {str(e)}", "raw_output": data_str[:200]}
+
+            validation_input = json.dumps({
+                "match_data": safe_json_load(cleaned_matches_json, "CleanerBot"), 
+                "player_stats": safe_json_load(cleaned_player_stats_json, "AnalystBot")
+            }, indent=2)
+            
+            validation_response = (validator_prompt | self.llm).invoke({"cleaned_data": validation_input})
+            val_content = str(validation_response.content)
+            self._log_agent("3", "ValidatorBot (Gemini)", validation_input, val_content)
+
+            if "data validated" in val_content.lower():
+                # STEP 4: PERSISTENCE
+                print(f"\n{BOLD}{CYAN}🤖 [STEP 4] Persistence Specialist...{RESET}")
+                res1 = data_persistor.invoke({"data_json": cleaned_matches_json, "table_name": "matches"})
+                res2 = data_persistor.invoke({"data_json": cleaned_player_stats_json, "table_name": "player_stats"})
+                
+                self._log_agent("4a", "Saving Matches", cleaned_matches_json, res1)
+                self._log_agent("4b", "Saving Player Stats", cleaned_player_stats_json, res2)
+
+                if "Error" in res1 or "Error" in res2:
+                    final_status = "⚠️ COMPLETED WITH ERRORS"
+                else:
+                    final_status = "✅ SUCCESSFUL"
             else:
-                final_status = "✅ SUCCESSFUL"
-        else:
-            final_status = f"❌ STALLED AT VALIDATION"
+                final_status = f"❌ STALLED AT VALIDATION"
 
-        self.generate_report(final_status)
+        except Exception as e:
+            err_msg = str(e)
+            print(f"\n{RED}❌ [DEBUG] PIPELINE CRASHED!{RESET}")
+            traceback.print_exc()
+
+            if "RESOURCE_EXHAUSTED" in err_msg or "429" in err_msg:
+                final_status = "⚠️ QUOTA EXCEEDED"
+            else:
+                final_status = f"❌ FATAL ERROR"
+
+        # Generate the report
+        final_report = self.generate_report(final_status)
+            
         print("═"*60 + "\n")
-        return final_status
+        return {"status": final_status, "report": final_report}
 
 workflow = ValorantPipelineWorkflow()

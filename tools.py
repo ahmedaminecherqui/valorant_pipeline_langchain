@@ -19,6 +19,11 @@ def match_data_cleaner(raw_matches_json: str) -> str:
         clean_matches = []
         for m in raw_matches:
             if not m or not isinstance(m, dict): continue
+            
+            # Skip if match is explicitly marked as unavailable
+            if not m.get('is_available', True):
+                continue
+
             meta = m.get('metadata') or {}
             mid = meta.get('matchid')
             # Skip records if matchid is missing or explicitly marked as unknown
@@ -52,6 +57,11 @@ def player_stats_cleaner(raw_matches_json: str) -> str:
         all_players = []
         for match in raw_matches:
             if not match or not isinstance(match, dict): continue
+            
+            # Skip if match is explicitly marked as unavailable
+            if not match.get('is_available', True):
+                continue
+
             meta = match.get('metadata') or {}
             match_id = meta.get('matchid', 'unknown')
             

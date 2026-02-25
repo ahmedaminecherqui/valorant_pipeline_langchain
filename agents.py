@@ -6,8 +6,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from tools import match_data_cleaner, player_stats_cleaner, data_persistor
 
 # Initialize the LLM (Gemini)
-# Standard models: 'gemini-1.5-flash', 'gemini-1.5-pro'
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+# Standard models: 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-2.5-flash'
+# Using 'gemini-flash-latest' as it's verified to work with your API key configuration
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash", 
+    temperature=0, 
+    max_retries=1,
+    request_timeout=120
+)
 
 # 1. Match Data Cleaning Agent (using tool directly via LCEL or functional call)
 # Since the user wants to test the workflow easily, we'll expose components that can be chained.
@@ -37,4 +43,31 @@ persistence_prompt = ChatPromptTemplate.from_template(
     "Table Name: {table_name}\n"
     "Data: {data_json}\n"
     "Use the data_persistor tool."
+)
+
+reporter_prompt = ChatPromptTemplate.from_template(
+    "You are 'ReportSage', an Elite System Auditor. Your goal is a stunning, transparent Markdown report.\n\n"
+    "REPORT STRUCTURE:\n"
+    "1. # 🌌 Aurora Pipeline: Audit Report (Large Heading)\n"
+    "2. ## 📊 Execution Summary (Status table with 🟢/🔴 icons)\n"
+    "3. ## ⚙️ Agent Log (Detailed breakdown)\n\n"
+    "FOR EVERY STEP IN THE HISTORY:\n"
+    "- ### 🤖 [Step {step}] {agent}\n"
+    "- **Execution Time:** {timestamp}\n"
+    "- **📥 INPUT RECEIVED:**\n"
+    "```json\n"
+    "{{input}}\n"
+    "```\n"
+    "- **📤 OUTPUT PRODUCED:**\n"
+    "```json\n"
+    "{{output}}\n"
+    "```\n"
+    "--- (Visual divider)\n\n"
+    "GUIDELINES:\n"
+    "- Do NOT skip agents. Do NOT summarize.\n"
+    "- Use emojis to make it feel premium and modern.\n\n"
+    "EXECUTION HISTORY:\n"
+    "{history_data}\n\n"
+    "FINAL STATUS: {final_status}\n\n"
+    "Generate the PERFECT report now."
 )
